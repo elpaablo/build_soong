@@ -125,7 +125,7 @@ var (
 			"-D__ARM_FEATURE_LPAE=1",
 		},
 		"cortex-a76": []string{
-			"-mcpu=cortex-a55",
+			"-mcpu=cortex-a75",
 			"-mfpu=neon-fp-armv8",
 			// Fake an ARM compiler flag as these processors support LPAE which GCC/clang
 			// don't advertise.
@@ -154,8 +154,9 @@ var (
 			"-D__ARM_FEATURE_LPAE=1",
 		},
 		"kryo385": []string{
-			// Use cortex-a53 because kryo385 is not supported in GCC/clang.
-			"-mcpu=cortex-a53",
+			// Use cortex-a55 because kryo385 is not supported in GCC/clang.
+			"-mcpu=cortex-a55+nodotprod",
+			"-mfpu=neon-fp-armv8",
 			// Fake an ARM compiler flag as these processors support LPAE which GCC/clang
 			// don't advertise.
 			// TODO This is a hack and we need to add it for each processor that supports LPAE until some
@@ -211,8 +212,10 @@ func init() {
 	exportedVars.ExportStringListStaticVariable("ArmCortexA15Cflags", armCpuVariantCflags["cortex-a15"])
 	exportedVars.ExportStringListStaticVariable("ArmCortexA53Cflags", armCpuVariantCflags["cortex-a53"])
 	exportedVars.ExportStringListStaticVariable("ArmCortexA55Cflags", armCpuVariantCflags["cortex-a55"])
+	exportedVars.ExportStringListStaticVariable("ArmCortexA76Cflags", armCpuVariantCflags["cortex-a76"])
 	exportedVars.ExportStringListStaticVariable("ArmKraitCflags", armCpuVariantCflags["krait"])
 	exportedVars.ExportStringListStaticVariable("ArmKryoCflags", armCpuVariantCflags["kryo"])
+	exportedVars.ExportStringListStaticVariable("ArmKryo385Cflags", armCpuVariantCflags["kryo385"])
 }
 
 var (
@@ -234,10 +237,10 @@ var (
 		"cortex-a72":     "${config.ArmCortexA53Cflags}",
 		"cortex-a73":     "${config.ArmCortexA53Cflags}",
 		"cortex-a75":     "${config.ArmCortexA55Cflags}",
-		"cortex-a76":     "${config.ArmCortexA55Cflags}",
+		"cortex-a76":     "${config.ArmCortexA76Cflags}",
 		"krait":          "${config.ArmKraitCflags}",
 		"kryo":           "${config.ArmKryoCflags}",
-		"kryo385":        "${config.ArmCortexA53Cflags}",
+		"kryo385":        "${config.ArmKryo385Cflags}",
 		"exynos-m1":      "${config.ArmCortexA53Cflags}",
 		"exynos-m2":      "${config.ArmCortexA53Cflags}",
 	}

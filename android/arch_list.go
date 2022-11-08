@@ -74,6 +74,7 @@ var cpuVariants = map[ArchType][]string{
 		"cortex-a76",
 		"krait",
 		"kryo",
+		"kryo300",
 		"kryo385",
 		"exynos-m1",
 		"exynos-m2",
@@ -86,7 +87,9 @@ var cpuVariants = map[ArchType][]string{
 		"cortex-a75",
 		"cortex-a76",
 		"kryo",
+		"kryo300",
 		"kryo385",
+		"kryo785",
 		"exynos-m1",
 		"exynos-m2",
 	},
@@ -96,6 +99,7 @@ var cpuVariants = map[ArchType][]string{
 
 var archFeatures = map[ArchType][]string{
 	Arm: {
+		"aarch32",
 		"neon",
 	},
 	Arm64: {
@@ -132,9 +136,11 @@ var androidArchFeatureMap = map[ArchType]map[string][]string{
 			"neon",
 		},
 		"armv8-a": {
+			"aarch32",
 			"neon",
 		},
 		"armv8-2a": {
+			"aarch32",
 			"neon",
 		},
 	},
