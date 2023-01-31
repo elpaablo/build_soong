@@ -139,7 +139,6 @@ func dumpMakeVars(ctx Context, config Config, goals, vars []string, write_soong_
 var BannerVars = []string{
 	"PLATFORM_VERSION_CODENAME",
 	"PLATFORM_VERSION",
-	"CR_VERSION",
 	"ALPHA_VERSION",
 	"ALPHA_BUILD_PACKAGE",
 	"TARGET_DEVICE",
