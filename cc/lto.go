@@ -91,14 +91,9 @@ func (lto *lto) flags(ctx BaseModuleContext, flags Flags) Flags {
 	if lto.LTO(ctx) {
 		var ltoCFlag string
 		var ltoLdFlag string
-		if lto.ThinLTO() {
-			ltoCFlag = "-flto=thin -fsplit-lto-unit"
-		} else if lto.FullLTO() {
-			ltoCFlag = "-flto"
-		} else {
-			ltoCFlag = "-flto=thin -fsplit-lto-unit"
-			ltoLdFlag = "-Wl,--lto-O0"
-		}
+		// HACK: use full lto opposed to thin lto.
+		// We do not care about compile times for runtime improvement.
+		ltoCFlag = "-flto"
 
 		flags.Local.CFlags = append(flags.Local.CFlags, ltoCFlag)
 		flags.Local.LdFlags = append(flags.Local.LdFlags, ltoCFlag)
@@ -121,11 +116,11 @@ func (lto *lto) flags(ctx BaseModuleContext, flags Flags) Flags {
 			flags.Local.LdFlags = append(flags.Local.LdFlags, cachePolicyFormat+policy)
 		}
 
-		// If the module does not have a profile, be conservative and limit cross TU inline
-		// limit to 5 LLVM IR instructions, to balance binary size increase and performance.
 		if !ctx.isPgoCompile() && !ctx.isAfdoCompile() {
 			flags.Local.LdFlags = append(flags.Local.LdFlags,
-				"-Wl,-plugin-opt,-import-instr-limit=5")
+				"-Wl,-mllvm,-inline-threshold=600")
+			flags.Local.LdFlags = append(flags.Local.LdFlags,
+				"-Wl,-mllvm,-inlinehint-threshold=750")
 		}
 	}
 	return flags

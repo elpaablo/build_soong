@@ -2201,6 +2201,20 @@ func RewriteLibs(c LinkableInterface, snapshotInfo **SnapshotInfo, actx android.
 	return nonvariantLibs, variantLibs
 }
 
+func RewriteHeaderLibs(c LinkableInterface, snapshotInfo **SnapshotInfo, actx android.BottomUpMutatorContext, config android.Config, list []string) (newHeaderLibs []string) {
+	newHeaderLibs = []string{}
+	for _, entry := range list {
+		// Replace device_kernel_headers with generated_kernel_headers
+		// for inline kernel building
+		if entry == "device_kernel_headers" || entry == "qti_kernel_headers" {
+			newHeaderLibs = append(newHeaderLibs, "generated_kernel_headers")
+			continue
+		}
+		newHeaderLibs = append(newHeaderLibs, entry)
+	}
+	return newHeaderLibs
+}
+
 func (c *Module) DepsMutator(actx android.BottomUpMutatorContext) {
 	if !c.Enabled() {
 		return

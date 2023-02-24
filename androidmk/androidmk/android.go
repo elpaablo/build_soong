@@ -64,6 +64,7 @@ var rewriteProperties = map[string](func(variableAssignmentContext) error){
 	"LOCAL_SANITIZE_DIAG":                  sanitize("diag."),
 	"LOCAL_STRIP_MODULE":                   strip(),
 	"LOCAL_CFLAGS":                         cflags,
+	"LOCAL_EXPORT_CFLAGS":                  exportCflags,
 	"LOCAL_UNINSTALLABLE_MODULE":           invert("installable"),
 	"LOCAL_PROGUARD_ENABLED":               proguardEnabled,
 	"LOCAL_MODULE_PATH":                    prebuiltModulePath,
