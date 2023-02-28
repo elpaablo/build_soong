@@ -481,14 +481,14 @@ func (a *AndroidApp) dexBuildActions(ctx android.ModuleContext) android.Path {
 	return a.dexJarFile.PathOrNil()
 }
 
-func (a *AndroidApp) jniBuildActions(jniLibs []jniLib, ctx android.ModuleContext) android.WritablePath {
+func (a *AndroidApp) jniBuildActions(jniLibs []jniLib, prebuiltJniPackages android.Paths, ctx android.ModuleContext) android.WritablePath {
 	var jniJarFile android.WritablePath
-	if len(jniLibs) > 0 {
+	if len(jniLibs) > 0 || len(prebuiltJniPackages) > 0 {
 		a.jniLibs = jniLibs
 		if a.shouldEmbedJnis(ctx) {
 			jniJarFile = android.PathForModuleOut(ctx, "jnilibs.zip")
 			a.installPathForJNISymbols = a.installPath(ctx)
-			TransformJniLibsToJar(ctx, jniJarFile, jniLibs, a.useEmbeddedNativeLibs(ctx))
+			TransformJniLibsToJar(ctx, jniJarFile, jniLibs, prebuiltJniPackages, a.useEmbeddedNativeLibs(ctx))
 			for _, jni := range jniLibs {
 				if jni.coverageFile.Valid() {
 					// Only collect coverage for the first target arch if this is a multilib target.
@@ -526,7 +526,8 @@ func (a *AndroidApp) JNISymbolsInstalls(installPath string) android.RuleBuilderI
 
 // Reads and prepends a main cert from the default cert dir if it hasn't been set already, i.e. it
 // isn't a cert module reference. Also checks and enforces system cert restriction if applicable.
-func processMainCert(m android.ModuleBase, certPropValue string, certificates []Certificate, ctx android.ModuleContext) []Certificate {
+func processMainCert(m android.ModuleBase, certPropValue string, certificates []Certificate,
+	ctx android.ModuleContext) (mainCertificate Certificate, allCertificates []Certificate) {
 	if android.SrcIsModule(certPropValue) == "" {
 		var mainCert Certificate
 		if certPropValue != "" {
@@ -558,7 +559,22 @@ func processMainCert(m android.ModuleBase, certPropValue string, certificates []
 		}
 	}
 
-	return certificates
+	if len(certificates) > 0 {
+		mainCertificate = certificates[0]
+	} else {
+		// This can be reached with an empty certificate list if AllowMissingDependencies is set
+		// and the certificate property for this module is a module reference to a missing module.
+		if !ctx.Config().AllowMissingDependencies() && len(ctx.GetMissingDependencies()) > 0 {
+			panic("Should only get here if AllowMissingDependencies set and there are missing dependencies")
+		}
+		// Set a certificate to avoid panics later when accessing it.
+		mainCertificate = Certificate{
+			Key: android.PathForModuleOut(ctx, "missing.pk8"),
+			Pem: android.PathForModuleOut(ctx, "missing.x509.pem"),
+		}
+	}
+
+	return mainCertificate, certificates
 }
 
 func (a *AndroidApp) InstallApkName() string {
@@ -635,29 +651,14 @@ func (a *AndroidApp) generateAndroidBuildActions(ctx android.ModuleContext) {
 
 	dexJarFile := a.dexBuildActions(ctx)
 
-	jniLibs, certificateDeps := collectAppDeps(ctx, a, a.shouldEmbedJnis(ctx), !Bool(a.appProperties.Jni_uses_platform_apis))
-	jniJarFile := a.jniBuildActions(jniLibs, ctx)
+	jniLibs, prebuiltJniPackages, certificates := collectAppDeps(ctx, a, a.shouldEmbedJnis(ctx), !Bool(a.appProperties.Jni_uses_platform_apis))
+	jniJarFile := a.jniBuildActions(jniLibs, prebuiltJniPackages, ctx)
 
 	if ctx.Failed() {
 		return
 	}
 
-	certificates := processMainCert(a.ModuleBase, a.getCertString(ctx), certificateDeps, ctx)
-
-	// This can be reached with an empty certificate list if AllowMissingDependencies is set
-	// and the certificate property for this module is a module reference to a missing module.
-	if len(certificates) > 0 {
-		a.certificate = certificates[0]
-	} else {
-		if !ctx.Config().AllowMissingDependencies() && len(ctx.GetMissingDependencies()) > 0 {
-			panic("Should only get here if AllowMissingDependencies set and there are missing dependencies")
-		}
-		// Set a certificate to avoid panics later when accessing it.
-		a.certificate = Certificate{
-			Key: android.PathForModuleOut(ctx, "missing.pk8"),
-			Pem: android.PathForModuleOut(ctx, "missing.pem"),
-		}
-	}
+	a.certificate, certificates = processMainCert(a.ModuleBase, a.getCertString(ctx), certificates, ctx)
 
 	// Build a final signed app package.
 	packageFile := android.PathForModuleOut(ctx, a.installApkName+".apk")
@@ -739,9 +740,10 @@ type appDepsInterface interface {
 
 func collectAppDeps(ctx android.ModuleContext, app appDepsInterface,
 	shouldCollectRecursiveNativeDeps bool,
-	checkNativeSdkVersion bool) ([]jniLib, []Certificate) {
+	checkNativeSdkVersion bool) ([]jniLib, android.Paths, []Certificate) {
 
 	var jniLibs []jniLib
+	var prebuiltJniPackages android.Paths
 	var certificates []Certificate
 	seenModulePaths := make(map[string]bool)
 
@@ -790,6 +792,10 @@ func collectAppDeps(ctx android.ModuleContext, app appDepsInterface,
 			return shouldCollectRecursiveNativeDeps
 		}
 
+		if info, ok := ctx.OtherModuleProvider(module, JniPackageProvider).(JniPackageInfo); ok {
+			prebuiltJniPackages = append(prebuiltJniPackages, info.JniPackages...)
+		}
+
 		if tag == certificateTag {
 			if dep, ok := module.(*AndroidAppCertificate); ok {
 				certificates = append(certificates, dep.Certificate)
@@ -801,7 +807,7 @@ func collectAppDeps(ctx android.ModuleContext, app appDepsInterface,
 		return false
 	})
 
-	return jniLibs, certificates
+	return jniLibs, prebuiltJniPackages, certificates
 }
 
 func (a *AndroidApp) WalkPayloadDeps(ctx android.ModuleContext, do android.PayloadDepsCallback) {
@@ -1382,7 +1388,7 @@ func (u *usesLibrary) verifyUsesLibraries(ctx android.ModuleContext, inputFile a
 		Flag("--enforce-uses-libraries").
 		Input(inputFile).
 		FlagWithOutput("--enforce-uses-libraries-status ", statusFile).
-		FlagWithInput("--aapt ", ctx.Config().HostToolPath(ctx, "aapt"))
+		FlagWithInput("--aapt ", ctx.Config().HostToolPath(ctx, "aapt2"))
 
 	if outputFile != nil {
 		cmd.FlagWithOutput("-o ", outputFile)

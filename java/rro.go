@@ -145,8 +145,8 @@ func (r *RuntimeResourceOverlay) GenerateAndroidBuildActions(ctx android.ModuleC
 	r.aapt.buildActions(ctx, r, nil, nil, aaptLinkFlags...)
 
 	// Sign the built package
-	_, certificates := collectAppDeps(ctx, r, false, false)
-	certificates = processMainCert(r.ModuleBase, String(r.properties.Certificate), certificates, ctx)
+	_, _, certificates := collectAppDeps(ctx, r, false, false)
+	r.certificate, certificates = processMainCert(r.ModuleBase, String(r.properties.Certificate), certificates, ctx)
 	signed := android.PathForModuleOut(ctx, "signed", r.Name()+".apk")
 	var lineageFile android.Path
 	if lineage := String(r.properties.Lineage); lineage != "" {
@@ -156,7 +156,6 @@ func (r *RuntimeResourceOverlay) GenerateAndroidBuildActions(ctx android.ModuleC
 	rotationMinSdkVersion := String(r.properties.RotationMinSdkVersion)
 
 	SignAppPackage(ctx, signed, r.aapt.exportPackage, certificates, nil, lineageFile, rotationMinSdkVersion)
-	r.certificate = certificates[0]
 
 	r.outputFile = signed
 	partition := rroPartition(ctx)

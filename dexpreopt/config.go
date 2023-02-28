@@ -98,6 +98,8 @@ type GlobalConfig struct {
 	// quickly silence build errors. This flag should be used with caution and only as a temporary
 	// measure, as it masks real errors and affects performance.
 	RelaxUsesLibraryCheck bool
+
+	EnableUffdGc bool // preopt with the assumption that userfaultfd GC will be used on device.
 }
 
 var allPlatformSystemServerJarsKey = android.NewOnceKey("allPlatformSystemServerJars")
@@ -494,7 +496,7 @@ func createGlobalSoongConfig(ctx android.ModuleContext) *GlobalSoongConfig {
 	return &GlobalSoongConfig{
 		Profman:          ctx.Config().HostToolPath(ctx, "profman"),
 		Dex2oat:          dex2oatPathFromDep(ctx),
-		Aapt:             ctx.Config().HostToolPath(ctx, "aapt"),
+		Aapt:             ctx.Config().HostToolPath(ctx, "aapt2"),
 		SoongZip:         ctx.Config().HostToolPath(ctx, "soong_zip"),
 		Zip2zip:          ctx.Config().HostToolPath(ctx, "zip2zip"),
 		ManifestCheck:    ctx.Config().HostToolPath(ctx, "manifest_check"),
@@ -696,7 +698,7 @@ func globalSoongConfigForTests() *GlobalSoongConfig {
 	return &GlobalSoongConfig{
 		Profman:          android.PathForTesting("profman"),
 		Dex2oat:          android.PathForTesting("dex2oat"),
-		Aapt:             android.PathForTesting("aapt"),
+		Aapt:             android.PathForTesting("aapt2"),
 		SoongZip:         android.PathForTesting("soong_zip"),
 		Zip2zip:          android.PathForTesting("zip2zip"),
 		ManifestCheck:    android.PathForTesting("manifest_check"),

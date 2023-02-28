@@ -74,7 +74,9 @@ func GetConfig(name string) PathConfig {
 }
 
 var Configuration = map[string]PathConfig{
+	"addr2line":  Allowed,
 	"bash":    Allowed,
+	"bison":    Allowed,
 	"brotli":  Allowed,
 	"ccache":  Allowed,
 	"cpio":    Allowed,
@@ -92,6 +94,7 @@ var Configuration = map[string]PathConfig{
 	"jar":     Allowed,
 	"java":    Allowed,
 	"javap":   Allowed,
+	"llvm-addr2line":  Allowed,
 	"locale":  Allowed,
 	"lsof":    Allowed,
 	"ld.lld":  Allowed,

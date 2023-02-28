@@ -259,7 +259,7 @@ func (a *AndroidAppImport) generateAndroidBuildActions(ctx android.ModuleContext
 		ctx.ModuleErrorf("One and only one of certficate, presigned, and default_dev_cert properties must be set")
 	}
 
-	_, certificates := collectAppDeps(ctx, a, false, false)
+	_, _, certificates := collectAppDeps(ctx, a, false, false)
 
 	// TODO: LOCAL_EXTRACT_APK/LOCAL_EXTRACT_DPI_APK
 	// TODO: LOCAL_PACKAGE_SPLITS
@@ -318,19 +318,17 @@ func (a *AndroidAppImport) generateAndroidBuildActions(ctx android.ModuleContext
 
 	if a.isPrebuiltFrameworkRes() {
 		a.outputFile = srcApk
-		certificates = processMainCert(a.ModuleBase, String(a.properties.Certificate), certificates, ctx)
+		a.certificate, certificates = processMainCert(a.ModuleBase, String(a.properties.Certificate), certificates, ctx)
 		if len(certificates) != 1 {
 			ctx.ModuleErrorf("Unexpected number of certificates were extracted: %q", certificates)
 		}
-		a.certificate = certificates[0]
 	} else if a.preprocessed {
 		a.outputFile = srcApk
 		a.certificate = PresignedCertificate
 	} else if !Bool(a.properties.Presigned) {
 		// If the certificate property is empty at this point, default_dev_cert must be set to true.
 		// Which makes processMainCert's behavior for the empty cert string WAI.
-		certificates = processMainCert(a.ModuleBase, String(a.properties.Certificate), certificates, ctx)
-		a.certificate = certificates[0]
+		a.certificate, certificates = processMainCert(a.ModuleBase, String(a.properties.Certificate), certificates, ctx)
 		signed := android.PathForModuleOut(ctx, "signed", apkFilename)
 		var lineageFile android.Path
 		if lineage := String(a.properties.Lineage); lineage != "" {
